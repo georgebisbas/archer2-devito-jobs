@@ -1,0 +1,81 @@
+#!/bin/bash
+
+# Slurm job options (job-name, compute nodes, job time)
+#SBATCH --job-name=Devito_MPI_Job
+#SBATCH --time=2:40:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=8
+#SBATCH --cpus-per-task=16
+#SBATCH --switches=1@720 # Each group has 128 nodes
+#SBATCH -o ./jobs-diag2/output-1-diag2.%j.out # STDOUT
+
+# Replace [budget code] below with your project code (e.g. t01)
+#SBATCH --account=n03-devito
+#SBATCH --partition=standard
+#SBATCH --qos=standard
+
+# Propagate the cpus-per-task setting from script to srun commands
+#    By default, Slurm does not propagate this setting from the sbatch
+#    options to srun commands in the job script. If this is not done,
+#    process/thread pinning may be incorrect leading to poor performance
+export SRUN_CPUS_PER_TASK=$SLURM_CPUS_PER_TASK
+
+module load cray-python
+module load cray-mpich
+source environments/python3-env/bin/activate
+cd devito
+
+# Set the number of threads to 16 and specify placement
+#   There are 16 OpenMP threads per MPI process
+#   We want one thread per physical core
+export OMP_NUM_THREADS=16
+export OMP_PLACES=cores
+
+# Devito-specific env variables
+export DEVITO_ARCH=cray
+export DEVITO_LANGUAGE=openmp
+export DEVITO_LOGGING=BENCH
+export DEVITO_MPI=diag2
+export DEVITO_PROFILING=advanced2
+
+# Archer specific
+# export MPICH_OFI_STARTUP_CONNECT=1
+# export MPICH_OFI_RMA_STARTUP_CONNECT=1
+export FI_OFI_RXM_SAR_LIMIT=524288
+export FI_OFI_RXM_BUFFER_SIZE=131072
+export MPICH_SMP_SINGLE_COPY_SIZE=16384
+export CRAY_OMP_CHECK_AFFINITY=TRUE
+export SLURM_CPU_FREQ_REQ=2250000
+
+# module swap craype-network-ofi craype-network-ucx
+# module swap cray-mpich cray-mpich-ucx
+
+# Launch the parallel job
+#   Using nodes x ntasks-per-node MPI processes
+#   8 MPI processes per node
+#   16 OpenMP threads per MPI process
+#   Additional srun options to pin one thread per physical core
+
+export DEVITO_SAFE_HALO=1
+#srun --distribution=block:block --hint=nomultithread python examples/seismic/acoustic/acoustic_example.py -d 1024 1024 1024 --tn 512 -so 4 -a aggressive
+#srun --distribution=block:block --hint=nomultithread python examples/seismic/acoustic/acoustic_example.py -d 1024 1024 1024 --tn 512 -so 8 -a aggressive
+#srun --distribution=block:block --hint=nomultithread python examples/seismic/acoustic/acoustic_example.py -d 1024 1024 1024 --tn 512 -so 12 -a aggressive
+#srun --distribution=block:block --hint=nomultithread python examples/seismic/acoustic/acoustic_example.py -d 1024 1024 1024 --tn 512 -so 16 -a aggressive
+
+export DEVITO_SAFE_HALO=2
+#srun --distribution=block:block --hint=nomultithread python examples/seismic/elastic/elastic_example.py -d 1024 1024 1024 --tn 512 -so 4 -a aggressive
+#srun --distribution=block:block --hint=nomultithread python examples/seismic/elastic/elastic_example.py -d 1024 1024 1024 --tn 512 -so 8 -a aggressive
+#srun --distribution=block:block --hint=nomultithread python examples/seismic/elastic/elastic_example.py -d 1024 1024 1024 --tn 512 -so 12 -a aggressive
+#srun --distribution=block:block --hint=nomultithread python examples/seismic/elastic/elastic_example.py -d 1024 1024 1024 --tn 512 -so 16 -a aggressive
+
+export DEVITO_SAFE_HALO=1
+srun --distribution=block:block --hint=nomultithread python examples/seismic/tti/tti_example.py -d 1024 1024 1024 --tn 512 -so 4 -a aggressive
+srun --distribution=block:block --hint=nomultithread python examples/seismic/tti/tti_example.py -d 1024 1024 1024 --tn 512 -so 8 -a aggressive
+srun --distribution=block:block --hint=nomultithread python examples/seismic/tti/tti_example.py -d 1024 1024 1024 --tn 512 -so 12 -a aggressive
+srun --distribution=block:block --hint=nomultithread python examples/seismic/tti/tti_example.py -d 1024 1024 1024 --tn 512 -so 16 -a aggressive
+
+export DEVITO_SAFE_HALO=2
+#srun --distribution=block:block --hint=nomultithread python examples/seismic/viscoelastic/viscoelastic_example.py -d 768 768 768 --tn 512 -so 4 -a aggressive
+#srun --distribution=block:block --hint=nomultithread python examples/seismic/viscoelastic/viscoelastic_example.py -d 768 768 768 --tn 512 -so 8 -a aggressive
+#srun --distribution=block:block --hint=nomultithread python examples/seismic/viscoelastic/viscoelastic_example.py -d 768 768 768 --tn 512 -so 12 -a aggressive
+#srun --distribution=block:block --hint=nomultithread python examples/seismic/viscoelastic/viscoelastic_example.py -d 768 768 768 --tn 512 -so 16 -a aggressive
